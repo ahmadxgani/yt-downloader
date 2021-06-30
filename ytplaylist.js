@@ -1,6 +1,11 @@
 const axios = require("axios").default
 const cheerio = require("cheerio")
 const readline = require("readline")
+const fs = require("fs")
+const path = require("path")
+
+const dirName = "My tutorial playlist/tutorial figma"
+const savedVideo = path.join(process.env.HOME, dirName)
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -8,8 +13,8 @@ const rl = readline.createInterface({
 })
 
 rl.question("Please paste the link you want to download: ", async (answer) => {
-    const videos = await ytPlaylistDl(answer)
-    console.log(videos)
+    const result = await ytPlaylistDl(answer)
+    await download(result)
     rl.close()
 })
 
@@ -40,12 +45,12 @@ const ytPlaylistDl = async (link) => {
         const listLinkDl = []
         const video_id = []
         $("div div.thumbnail").each((_, el) => {
-            const href = $(el).find("a").attr("href")
-            const code = href.split("/")
+            const href = $(el).find("a").eq(1)
+            const code = href.attr("href").split("/")
             const v_id = code[code.length - 1]
-            video_id.push({ v_id, href })
+            video_id.push({ v_id, href: href.attr("href"), fileName: href.text() })
         })
-        const promiseArr = video_id.map(({ v_id, href }) => {
+        const promiseArr = video_id.map(({ v_id, href, fileName }) => {
             return new Promise((resolve, reject) => {
                 axios({
                     url: "https://www.y2mate.com/mates/analyze/ajax",
@@ -59,7 +64,7 @@ const ytPlaylistDl = async (link) => {
                         "X-Requested-With": "XMLHttpRequest",
                         "Origin": "https://www.y2mate.com",
                         "Alt-Used": "www.y2mate.com",
-                        "Referer": `https://www.y2mate.com${href}`,
+                        "Referer": `https://www.y2mate.com/en68${href}`,
                         "Connection": "keep-alive",
                         "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
                         "Pragma": "no-cache",
@@ -89,12 +94,25 @@ const ytPlaylistDl = async (link) => {
                                 url: "https://www.y2mate.com/mates/convert",
                                 method: "POST",
                                 headers: {
+                                    "Host": "www.y2mate.com",
+                                    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+                                    "Accept": "*/*",
+                                    "Accept-Language": "en-US,en;q=0.5",
+                                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                                    "X-Requested-With": "XMLHttpRequest",
+                                    "Origin": "https://www.y2mate.com",
+                                    "Referer": `https://www.y2mate.com/en68${href}`,
+                                    "Connection": "keep-alive",
+                                    "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
+                                    "Pragma": "no-cache",
+                                    "Cache-Control": "no-cache",
+                                    "TE": "Trailers"
                                 },
                                 data
                             }).then(res => {
                                 const $ = cheerio.load(res.data.result)
-                                const download = $("div a").attr("href")
-                                if (!download.startsWith("https://app.y2mate.com/download")) listLinkDl.push(download)
+                                const downloadLink = $("div a").attr("href")
+                                if (!downloadLink.startsWith("https://app.y2mate.com/download")) listLinkDl.push({ downloadLink, fileName })
                                 resolve("done")
                             })
                         }
@@ -107,4 +125,27 @@ const ytPlaylistDl = async (link) => {
         console.log(e)
         throw new Error("Request time out")
     }
+}
+
+const download = (videos) => {
+    return videos.map(async video => {
+        const fileName = path.join(savedVideo, video.fileName)
+        const response = (await axios({
+            url: video.downloadLink,
+            method: "GET",
+            headers: {
+                "Connection": "keep-alive"
+            },
+            responseType: "stream"
+        })).data
+        
+        if (!fs.existsSync(savedVideo)){
+            fs.mkdirSync(savedVideo);
+        }
+
+        response.pipe(fs.createWriteStream(fileName))
+        response.on("end", () => {
+            console.log(`video with name ${video.fileName} successfully downloaded`)
+        })
+    })
 }
