@@ -1,22 +1,87 @@
 const axios = require("axios").default
 const cheerio = require("cheerio")
-const readline = require("readline")
-const fs = require("fs")
+const Fs = require("fs")
+const { Listr } = require("listr2")
 const path = require("path")
 
-const dirName = "My tutorial playlist/tutorial figma"
-const savedVideo = path.join(process.env.HOME, dirName)
+const ytRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/);
+const domain = new RegExp(/(redirector\.googlevideo\.com)|(dl(\d){0,3}.(dlmate|y2mate)(\d){0,2}.(xyz|com))/)
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-})
+const informationTask = async (ctx, task) => {
+    ctx.input = await task.prompt([
+        {
+            type: "Input",
+            name: "youtube link",
+            message: "Please paste the youtube playlist link",
+            validate: (response) => {
+                if (!ytRegex.test(response)) return false
+                return true
+            },
+        },
+        {
+            type: "Input",
+            initial: "downloads",
+            name: "folder download",
+            message: "Please type your directory that will be saved file of the download"
+        }
+    ])
+}
+const output = [ "youtube link", "folder download" ]
+const tasks = new Listr(
+    [
+        {
+            title: "Getting information",
+            task: informationTask
+        },
+        {
+            title: "Confirmation",
+            task: async (ctx, task) => {
+                ctx.isConfirm = await task.prompt([{
+                    type: "Toggle",
+                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: ${ctx.input[output[1]]}\n\n  is the information above correct?`,
+                    initial: false
+                }])
+            },
+        },
+        {
+            enabled: (ctx) => !ctx.isConfirm,
+            task: informationTask
+        },
+        {
+            title: "Downloading video",
+            task: async (ctx, task) => {
+                try {
+                    task.title = "Please wait a moment"
+                    task.output = "processing..."
+                    ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]])
+                    task.title = "Downloading video"
+                } catch (e) {
+                    throw e
+                }
+            }
+        },
+        {
+            task: async (ctx, task) => {
+                task.title = `save video to "${ctx.input[output[1]]}" folder`
+                await download(ctx.linkVideos, ctx.input[output[1]])
+                task.output = `total videos: ${ctx.linkVideos.length}`
+            },
+            options: {
+                persistentOutput: true
+            }
+        },
+    ],
+    { exitOnError: false }
+)
 
-rl.question("Please paste the link you want to download: ", async (answer) => {
-    const result = await ytPlaylistDl(answer)
-    await download(result)
-    rl.close()
-})
+const run = async () => {
+    try {
+        await tasks.run()
+      } catch (e) {
+        console.error(e)
+      }
+}
+run()
 
 const ytPlaylistDl = async (link) => {
     try {
@@ -42,7 +107,6 @@ const ytPlaylistDl = async (link) => {
             data: `url=${encodeURIComponent(link)}&q_auto=0&ajax=1`
         })
         const $ = cheerio.load(res.data.result)
-        const listLinkDl = []
         const video_id = []
         $("div div.thumbnail").each((_, el) => {
             const href = $(el).find("a").eq(1)
@@ -89,7 +153,6 @@ const ytPlaylistDl = async (link) => {
                                 ftype: "mp4",
                                 fquality
                             }))
-                            const ingfo = $(el).first().text()
                             axios({
                                 url: "https://www.y2mate.com/mates/convert",
                                 method: "POST",
@@ -112,38 +175,45 @@ const ytPlaylistDl = async (link) => {
                             }).then(res => {
                                 const $ = cheerio.load(res.data.result)
                                 const downloadLink = $("div a").attr("href")
-                                if (!downloadLink.startsWith("https://app.y2mate.com/download")) listLinkDl.push({ downloadLink, fileName })
-                                resolve("done")
+                                resolve({ downloadLink, fileName })
+                                
                             })
                         }
                     })
                 }).catch(reject)
             })
         })
-        return Promise.all(promiseArr).then(() => listLinkDl).catch((e) => e)
+        return await Promise.all(promiseArr)
     } catch (e) {
         console.log(e)
         throw new Error("Request time out")
     }
 }
 
-const download = (videos) => {
+const download = (videos, dirName) => {
+    dirName = path.join(`${process.env.HOME}/My tutorial playlist`, dirName)
     return videos.map(async video => {
-        const fileName = path.join(savedVideo, video.fileName)
+        const fileName = path.join(dirName, video.fileName)
         const response = (await axios({
             url: video.downloadLink,
             method: "GET",
             headers: {
-                "Connection": "keep-alive"
+                "Host": domain.exec(video.downloadLink)[0],
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Connection": "keep-alive",
+                "Referer": "https://www.y2mate.com/",
+                "Upgrade-Insecure-Requests": 1
             },
             responseType: "stream"
         })).data
         
-        if (!fs.existsSync(savedVideo)){
-            fs.mkdirSync(savedVideo);
+        if (!Fs.existsSync(path.join(dirName))) {
+            Fs.mkdirSync(path.join(dirName));
         }
 
-        response.pipe(fs.createWriteStream(fileName))
+        response.pipe(Fs.createWriteStream(fileName))
         response.on("end", () => {
             console.log(`video with name ${video.fileName} successfully downloaded`)
         })
