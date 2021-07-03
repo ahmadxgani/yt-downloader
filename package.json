@@ -6,13 +6,19 @@
   "scripts": {
     "start": "node src"
   },
+  "bin": {
+    "ytdl": "bin/ytdl.js"
+  },
   "keywords": [
     "youtube-dl",
     "youtube-downloader",
     "cli",
     "terminal"
   ],
-  "author": "Query gani",
+  "author": {
+    "name": "Query gani",
+    "url": "https://github.com/query-gani"
+  },
   "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",

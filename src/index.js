@@ -101,14 +101,13 @@ const tasks = new Listr(
     { exitOnError: false }
 )
 
-const run = async () => {
+export const start = async () => {
     try {
         await tasks.run()
-      } catch (e) {
+    } catch (e) {
         console.error(e)
-      }
+    }
 }
-run()
 
 const ytPlaylistDl = async (link, defaultResolution, resolution) => {
     try {
