@@ -4,17 +4,23 @@ const Fs = require("fs")
 const { Listr } = require("listr2")
 const path = require("path")
 
-const ytRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/);
+const singleRegex = new RegExp(/(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:shorts\/)?(?:watch\?.*(?:|\&)v=|embed\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/)
+const playlistRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/);
 const domain = new RegExp(/(redirector\.googlevideo\.com)|(dl(\d){0,3}.(dlmate|y2mate)(\d){0,2}.(xyz|com))/)
 
 const informationTask = async (ctx, task) => {
+    ctx.type = await task.prompt({
+        type: "Select",
+        message: "which one ( playlist / single video )",
+        choices: [ "playlist", "single" ]
+    })
     ctx.input = await task.prompt([
         {
             type: "Input",
             name: "youtube link",
             message: "Please paste the youtube playlist link",
             validate: (response) => {
-                if (!ytRegex.test(response)) return false
+                if (ctx.type === "single" ? !singleRegex.test(response) : !playlistRegex.test(response)) return false
                 return true
             },
         },
@@ -65,7 +71,15 @@ const tasks = new Listr(
                 try {
                     task.title = "Please wait a moment"
                     task.output = "processing..."
-                    ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
+                    if (ctx.type === "single") {
+                        const v_id = singleRegex.exec(ctx.input[output[0]])[1]
+                        ctx.linkVideos = [await getSingleVid({
+                            v_id,
+                            href: `/youtube/${v_id}`,
+                            defaultResolution: ctx.input[output[3]],
+                            resolution: ctx.input[output[2]]
+                        })]
+                    } else ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
                     task.title = "Downloading video"
                 } catch (e) {
                     throw e
@@ -124,7 +138,7 @@ const ytPlaylistDl = async (link, defaultResolution, resolution) => {
             const href = $(el).find("a").eq(1)
             const code = href.attr("href").split("/")
             const v_id = code[code.length - 1]
-            video_id.push({ v_id, href: href.attr("href"), fileName: href.text() })
+            video_id.push({ v_id, href: href.attr("href") })
         })
         const promiseArr = video_id.map((args) => {
             return new Promise((resolve, reject) => {
@@ -138,7 +152,7 @@ const ytPlaylistDl = async (link, defaultResolution, resolution) => {
     }
 }
 
-const getSingleVid = ({ v_id, href, fileName, defaultResolution, resolution }) => {
+const getSingleVid = ({ v_id, href, defaultResolution, resolution }) => {
     return new Promise((resolve, reject) => {
         axios({
             url: "https://www.y2mate.com/mates/analyze/ajax",
@@ -167,6 +181,7 @@ const getSingleVid = ({ v_id, href, fileName, defaultResolution, resolution }) =
             const tr = $("div#mp4 table tbody tr")
             const result = tr.get().length
             const resArr = []
+            const fileName = $("div.thumbnail.cover div b").text()
             tr.toArray().find((val, i) => {
                 if (i < (result - 2)) resArr.push($(val).find("td").last().find("a").attr("data-fquality"))
             });
@@ -193,7 +208,7 @@ const getSingleVid = ({ v_id, href, fileName, defaultResolution, resolution }) =
                             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                             "X-Requested-With": "XMLHttpRequest",
                             "Origin": "https://www.y2mate.com",
-                            "Referer": `https://www.y2mate.com/en68${href}`,
+                            "Referer": `https://www.y2mate.com${href}`,
                             "Connection": "keep-alive",
                             "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
                             "Pragma": "no-cache",
