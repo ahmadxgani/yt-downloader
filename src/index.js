@@ -230,7 +230,7 @@ const getSingleVid = ({ v_id, href, defaultResolution, resolution }) => {
 const download = (videos, dirName) => {
     dirName = path.join(`${process.env.HOME}/My tutorial playlist`, dirName)
     return videos.map(async video => {
-        const fileName = path.join(dirName, video.fileName)
+        const fileName = path.join(dirName, video.fileName.replace(/\//g, " or "))
         const response = (await axios({
             url: video.downloadLink,
             method: "GET",
@@ -252,7 +252,7 @@ const download = (videos, dirName) => {
 
         response.pipe(Fs.createWriteStream(fileName))
         response.on("end", () => {
-            console.log(`video with name ${video.fileName} successfully downloaded`)
+            console.log(`video with name ${video.fileName.replace(/\//g, " or ")} successfully downloaded`)
         })
     })
 }
