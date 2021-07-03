@@ -248,7 +248,7 @@ const download = (videos, dirName) => {
             })).data
             
             if (!Fs.existsSync(path.join(dirName))) {
-                Fs.mkdirSync(path.join(dirName));
+                Fs.mkdirSync(path.join(dirName), { recursive: true });
             }
     
             response.pipe(Fs.createWriteStream(fileName))
