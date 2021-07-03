@@ -6,7 +6,7 @@ const path = require("path")
 
 const singleRegex = new RegExp(/(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:shorts\/)?(?:watch\?.*(?:|\&)v=|embed\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/)
 const playlistRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/);
-const domain = new RegExp(/(redirector\.googlevideo\.com)|(dl(\d){0,3}.(dlmate|y2mate)(\d){0,2}.(xyz|com))/)
+const domain = new RegExp(/((redirector|r1---sn-npoeenlk)\.googlevideo\.com)|(dl(\d){0,3}.(dlmate|y2mate)(\d){0,2}.(xyz|com))/)
 
 const informationTask = async (ctx, task) => {
     ctx.type = await task.prompt({
@@ -230,30 +230,34 @@ const getSingleVid = ({ v_id, href, defaultResolution, resolution }) => {
 const download = (videos, dirName) => {
     dirName = path.join(`${process.env.HOME}/My tutorial playlist`, dirName)
     return videos.map(async video => {
-        const fileName = path.join(dirName, video.fileName.replace(/\//g, " or "))
-        const response = (await axios({
-            url: video.downloadLink,
-            method: "GET",
-            headers: {
-                "Host": domain.exec(video.downloadLink)[0],
-                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Connection": "keep-alive",
-                "Referer": "https://www.y2mate.com/",
-                "Upgrade-Insecure-Requests": 1
-            },
-            responseType: "stream"
-        })).data
-        
-        if (!Fs.existsSync(path.join(dirName))) {
-            Fs.mkdirSync(path.join(dirName));
+        try {
+            const fileName = path.join(dirName, video.fileName.replace(/\//g, " of "))
+            const response = (await axios({
+                url: video.downloadLink,
+                method: "GET",
+                headers: {
+                    "Host": domain.exec(video.downloadLink)[0],
+                    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.5",
+                    "Connection": "keep-alive",
+                    "Referer": "https://www.y2mate.com/",
+                    "Upgrade-Insecure-Requests": 1
+                },
+                responseType: "stream"
+            })).data
+            
+            if (!Fs.existsSync(path.join(dirName))) {
+                Fs.mkdirSync(path.join(dirName));
+            }
+    
+            response.pipe(Fs.createWriteStream(fileName))
+            response.on("end", () => {
+                console.log(`video with name "${video.fileName.replace(/\//g, " of ")}" has been saved successfully`)
+            })
+        } catch {
+            console.log(`video with "${video.fileName.replace(/\//g, " of ")}" name failed to save`)
         }
-
-        response.pipe(Fs.createWriteStream(fileName))
-        response.on("end", () => {
-            console.log(`video with name ${video.fileName.replace(/\//g, " or ")} successfully downloaded`)
-        })
     })
 }
 
