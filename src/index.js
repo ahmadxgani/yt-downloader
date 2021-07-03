@@ -101,7 +101,7 @@ const tasks = new Listr(
     { exitOnError: false }
 )
 
-export const start = async () => {
+exports.start = async () => {
     try {
         await tasks.run()
     } catch (e) {
