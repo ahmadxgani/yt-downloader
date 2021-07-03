@@ -7,12 +7,12 @@ This Package use for downloading playlist or single video from youtube
 install globally the package from npm
 
 ```bash
-npm install -g youtube-downloader-cli
+npm install -g youtube-downloader-cli enquirer
 ```
 
 ## Usage
 just type
 
 ```bash
-youtube-downloader-cli
+ytdl
 ```
