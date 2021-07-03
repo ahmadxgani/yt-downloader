@@ -80,7 +80,10 @@ const tasks = new Listr(
                             defaultResolution: ctx.input[output[3]],
                             resolution: ctx.input[output[2]]
                         })]
-                    } else ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
+                    } else {
+                        ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
+                        if (!ctx.linkVideos.length) throw "playlist cannot contain more than 24 videos"
+                    }
                     task.title = "Downloading video"
                 } catch (e) {
                     throw e
