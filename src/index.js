@@ -82,7 +82,7 @@ const tasks = new Listr(
                         })]
                     } else {
                         ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
-                        if (!ctx.linkVideos.length) throw "playlist cannot contain more than 24 videos"
+                        if (!ctx.linkVideos.length) throw "Playlist url are not supported"
                     }
                     task.title = "Downloading video"
                 } catch (e) {
