@@ -57,7 +57,7 @@ const tasks = new Listr(
             task: async (ctx, task) => {
                 ctx.isConfirm = await task.prompt([{
                     type: "Toggle",
-                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: ${path.join(process.env.HOME, ctx.input[output[1]])}\n  ${output[2]}: ${ctx.input[output[2]]}\n  ${output[3]}: ${ctx.input[output[3]]}\n\n  is the information above correct?`,
+                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: "${path.join(process.env.HOME, ctx.input[output[1]])}"\n  ${output[2]}: ${ctx.input[output[2]]}\n  ${output[3]}: ${ctx.input[output[3]]}\n\n  is the information above correct?`,
                     initial: false
                 }])
             },
