@@ -44,6 +44,7 @@ const informationTask = async (ctx, task) => {
         }
     ])
 }
+
 const output = [ "youtube link", "folder download", "resolution", "default resolution" ]
 const tasks = new Listr(
     [

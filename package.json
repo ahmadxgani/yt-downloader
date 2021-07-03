@@ -1,17 +1,30 @@
 {
-  "name": "scraping",
+  "name": "youtube-downloader-cli",
   "version": "1.0.0",
-  "description": "",
+  "description": "download playlist or single video from youtube!",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "youtube-dl",
+    "youtube-downloader",
+    "cli"
+  ],
+  "author": "Query gani",
+  "license": "MIT",
   "dependencies": {
     "axios": "^0.21.1",
     "cheerio": "^1.0.0-rc.9",
     "listr2": "^3.10.0"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QUERY-GANI/yt-downloader.git"
+  },
+  "bugs": {
+    "url": "https://github.com/QUERY-GANI/yt-downloader/issues"
+  },
+  "homepage": "https://github.com/QUERY-GANI/yt-downloader#readme"
 }
