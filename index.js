@@ -23,10 +23,22 @@ const informationTask = async (ctx, task) => {
             initial: "downloads",
             name: "folder download",
             message: "Please type your directory that will be saved file of the download"
+        },
+        {
+            type: "Select",
+            name: "resolution",
+            message: "choose video resolution",
+            choices: [ "1080p", "720p", "480p", "360p", "240p", "144p" ]
+        },
+        {
+            type: "Select",
+            name: "default resolution",
+            message: "select the default resolution if the resolution you choose is not available",
+            choices: [ "Highest resolution", "Lowest resolution" ]
         }
     ])
 }
-const output = [ "youtube link", "folder download" ]
+const output = [ "youtube link", "folder download", "resolution", "default resolution" ]
 const tasks = new Listr(
     [
         {
@@ -38,7 +50,7 @@ const tasks = new Listr(
             task: async (ctx, task) => {
                 ctx.isConfirm = await task.prompt([{
                     type: "Toggle",
-                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: ${ctx.input[output[1]]}\n\n  is the information above correct?`,
+                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: ${ctx.input[output[1]]}\n  ${output[2]}: ${ctx.input[output[2]]}\n  ${output[3]}: ${ctx.input[output[3]]}\n\n  is the information above correct?`,
                     initial: false
                 }])
             },
@@ -53,12 +65,12 @@ const tasks = new Listr(
                 try {
                     task.title = "Please wait a moment"
                     task.output = "processing..."
-                    ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]])
+                    ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
                     task.title = "Downloading video"
                 } catch (e) {
                     throw e
                 }
-            }
+            },
         },
         {
             task: async (ctx, task) => {
@@ -83,7 +95,7 @@ const run = async () => {
 }
 run()
 
-const ytPlaylistDl = async (link) => {
+const ytPlaylistDl = async (link, defaultResolution, resolution) => {
     try {
         const res = await axios({
             url: "https://www.y2mate.com/mates/en68/analyze/ajax",
@@ -114,73 +126,9 @@ const ytPlaylistDl = async (link) => {
             const v_id = code[code.length - 1]
             video_id.push({ v_id, href: href.attr("href"), fileName: href.text() })
         })
-        const promiseArr = video_id.map(({ v_id, href, fileName }) => {
+        const promiseArr = video_id.map((args) => {
             return new Promise((resolve, reject) => {
-                axios({
-                    url: "https://www.y2mate.com/mates/analyze/ajax",
-                    method: "POST",
-                    headers: {
-                        "Host": "www.y2mate.com",
-                        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-                        "Accept": "*/*",
-                        "Accept-Language": "en-US,en;q=0.5",
-                        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                        "X-Requested-With": "XMLHttpRequest",
-                        "Origin": "https://www.y2mate.com",
-                        "Alt-Used": "www.y2mate.com",
-                        "Referer": `https://www.y2mate.com/en68${href}`,
-                        "Connection": "keep-alive",
-                        "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
-                        "Pragma": "no-cache",
-                        "Cache-Control": "no-cache",
-                        "TE": "Trailers"
-                    },
-                    data: `url=${encodeURI(`https://youtube.com/watch?v=${v_id}`)}&q_auto=1&ajax=1`
-                }).then(res => {
-                    const $ = cheerio.load(res.data.result)
-                    const script = $("script").last().html()
-                    const _id = /var k__id = "(.*?)";/.exec(script)[1]
-                    const result = $("div#mp4 table tbody tr").get().length
-                    $("div#mp4 table tbody tr").each((i, el) => {
-                        if (i < (result - 2)) {
-                            const fquality = $(el).find("td a").last().attr("data-fquality")
-                            const data = new URLSearchParams(Object.entries({
-                                type: "youtube",
-                                _id,
-                                v_id,
-                                ajax: "1",
-                                token: "",
-                                ftype: "mp4",
-                                fquality
-                            }))
-                            axios({
-                                url: "https://www.y2mate.com/mates/convert",
-                                method: "POST",
-                                headers: {
-                                    "Host": "www.y2mate.com",
-                                    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-                                    "Accept": "*/*",
-                                    "Accept-Language": "en-US,en;q=0.5",
-                                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                                    "X-Requested-With": "XMLHttpRequest",
-                                    "Origin": "https://www.y2mate.com",
-                                    "Referer": `https://www.y2mate.com/en68${href}`,
-                                    "Connection": "keep-alive",
-                                    "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
-                                    "Pragma": "no-cache",
-                                    "Cache-Control": "no-cache",
-                                    "TE": "Trailers"
-                                },
-                                data
-                            }).then(res => {
-                                const $ = cheerio.load(res.data.result)
-                                const downloadLink = $("div a").attr("href")
-                                resolve({ downloadLink, fileName })
-                                
-                            })
-                        }
-                    })
-                }).catch(reject)
+                getSingleVid({ ...args, defaultResolution, resolution }).then(resolve).catch(reject)
             })
         })
         return await Promise.all(promiseArr)
@@ -188,6 +136,80 @@ const ytPlaylistDl = async (link) => {
         console.log(e)
         throw new Error("Request time out")
     }
+}
+
+const getSingleVid = ({ v_id, href, fileName, defaultResolution, resolution }) => {
+    return new Promise((resolve, reject) => {
+        axios({
+            url: "https://www.y2mate.com/mates/analyze/ajax",
+            method: "POST",
+            headers: {
+                "Host": "www.y2mate.com",
+                "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+                "Accept": "*/*",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+                "Origin": "https://www.y2mate.com",
+                "Alt-Used": "www.y2mate.com",
+                "Referer": "https://www.y2mate.com/en68",
+                "Connection": "keep-alive",
+                "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache",
+                "TE": "Trailers"
+            },
+            data: `url=${encodeURI(`https://youtube.com/watch?v=${v_id}`)}&q_auto=1&ajax=1`
+        }).then(res => {
+            const $ = cheerio.load(res.data.result)
+            const script = $("script").last().html()
+            const _id = /var k__id = "(.*?)";/.exec(script)[1]
+            const tr = $("div#mp4 table tbody tr")
+            const result = tr.get().length
+            const resArr = []
+            tr.toArray().find((val, i) => {
+                if (i < (result - 2)) resArr.push($(val).find("td").last().find("a").attr("data-fquality"))
+            });
+            const fquality = chooseResolution(defaultResolution, resolution, resArr)
+            tr.each((i) => {
+                if (i < (result - 2)) {
+                    const data = new URLSearchParams(Object.entries({
+                        type: "youtube",
+                        _id,
+                        v_id,
+                        ajax: "1",
+                        token: "",
+                        ftype: "mp4",
+                        fquality
+                    }))
+                    axios({
+                        url: "https://www.y2mate.com/mates/convert",
+                        method: "POST",
+                        headers: {
+                            "Host": "www.y2mate.com",
+                            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+                            "Accept": "*/*",
+                            "Accept-Language": "en-US,en;q=0.5",
+                            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                            "X-Requested-With": "XMLHttpRequest",
+                            "Origin": "https://www.y2mate.com",
+                            "Referer": `https://www.y2mate.com/en68${href}`,
+                            "Connection": "keep-alive",
+                            "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
+                            "Pragma": "no-cache",
+                            "Cache-Control": "no-cache",
+                            "TE": "Trailers"
+                        },
+                        data
+                    }).then(res => {
+                        const $ = cheerio.load(res.data.result)
+                        const downloadLink = $("div a").attr("href")
+                        resolve({ downloadLink, fileName })
+                    })
+                }
+            })
+        }).catch(reject)
+    })
 }
 
 const download = (videos, dirName) => {
@@ -218,4 +240,13 @@ const download = (videos, dirName) => {
             console.log(`video with name ${video.fileName} successfully downloaded`)
         })
     })
+}
+
+const chooseResolution = (defaultResolution, resolution, availableResolution) => {
+    const isAvailable = availableResolution.find(val => new RegExp(resolution.slice(0, resolution.length - 1)).test(val))
+    const defaultRes = defaultResolution === "Highest resolution"
+    ? availableResolution[0]
+    : availableResolution[availableResolution.length - 1]
+
+    return isAvailable || defaultRes
 }
