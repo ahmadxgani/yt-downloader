@@ -19,7 +19,7 @@ const informationTask = async (ctx, task) => {
         {
             type: "Input",
             name: "youtube link",
-            message: "Please paste the youtube playlist link",
+            message: `Please paste the youtube ${ctx.type === "single" ? "video" : "playlist"} link`,
             validate: (response) => {
                 if (ctx.type === "single" ? !singleRegex.test(response) : !playlistRegex.test(response)) return false
                 return true
