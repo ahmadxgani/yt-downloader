@@ -3,7 +3,7 @@ const cheerio = require("cheerio")
 const Fs = require("fs")
 const { Listr } = require("listr2")
 const path = require("path")
-const config = require("../env.json")
+const config = require(path.join(process.env.HOME, "env.json"))
 
 const singleRegex = new RegExp(/(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:shorts\/)?(?:watch\?.*(?:|\&)v=|embed\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/)
 const playlistRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/);
