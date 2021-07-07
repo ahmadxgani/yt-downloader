@@ -116,37 +116,23 @@ exports.start = async () => {
 const ytPlaylistDl = async (link, defaultResolution, resolution) => {
     try {
         const res = await axios({
-            url: "https://www.y2mate.com/mates/en68/analyze/ajax",
-            method: "POST",
-            headers: {	
-                "Accept": "*/*",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Alt-Used": "www.y2mate.com",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
-                "Host": "www.y2mate.com",
-                "Origin": "https://www.y2mate.com",
-                "Pragma": "no-cache",
-                "Referer": "https://www.y2mate.com/en68",
-                "TE": "Trailers",
+            url: `https://api.youtubemultidownloader.com/playlist?url=${encodeURIComponent(link)}&nextPageToken=`,
+            method: "GET",
+            headers: {
+                "Host": "api.youtubemultidownloader.com",
                 "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Origin": "https://youtubemultidownloader.net",
+                "Connection": "keep-alive",
+                "Referer": "https://youtubemultidownloader.net/",
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache"
             },
-            data: `url=${encodeURIComponent(link)}&q_auto=0&ajax=1`
         })
-        const $ = cheerio.load(res.data.result)
-        const video_id = []
-        $("div div.thumbnail").each((_, el) => {
-            const href = $(el).find("a").eq(1)
-            const code = href.attr("href").split("/")
-            const v_id = code[code.length - 1]
-            video_id.push({ v_id, href: href.attr("href") })
-        })
-        const promiseArr = video_id.map((args) => {
+        const promiseArr = res.data.items.map((val) => {
             return new Promise((resolve, reject) => {
-                getSingleVid({ ...args, defaultResolution, resolution }).then(resolve).catch(reject)
+                getSingleVid({ v_id: val.id, defaultResolution, resolution }).then(resolve).catch(reject)
             })
         })
         return await Promise.all(promiseArr)
@@ -156,7 +142,7 @@ const ytPlaylistDl = async (link, defaultResolution, resolution) => {
     }
 }
 
-const getSingleVid = ({ v_id, href, defaultResolution, resolution }) => {
+const getSingleVid = ({ v_id, defaultResolution, resolution }) => {
     return new Promise((resolve, reject) => {
         axios({
             url: "https://www.y2mate.com/mates/analyze/ajax",
@@ -212,7 +198,7 @@ const getSingleVid = ({ v_id, href, defaultResolution, resolution }) => {
                             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                             "X-Requested-With": "XMLHttpRequest",
                             "Origin": "https://www.y2mate.com",
-                            "Referer": `https://www.y2mate.com${href}`,
+                            "Referer": `https://www.y2mate.com/youtube/${v_id}`,
                             "Connection": "keep-alive",
                             "Cookie": "PHPSESSID=lsbkrjfu99f613h39md06l3r93",
                             "Pragma": "no-cache",
