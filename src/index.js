@@ -3,6 +3,7 @@ const cheerio = require("cheerio")
 const Fs = require("fs")
 const { Listr } = require("listr2")
 const path = require("path")
+const config = require("../env.json")
 
 const singleRegex = new RegExp(/(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:shorts\/)?(?:watch\?.*(?:|\&)v=|embed\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/)
 const playlistRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/);
@@ -57,7 +58,7 @@ const tasks = new Listr(
             task: async (ctx, task) => {
                 ctx.isConfirm = await task.prompt([{
                     type: "Toggle",
-                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: "${path.join(process.env.HOME, ctx.input[output[1]])}"\n  ${output[2]}: ${ctx.input[output[2]]}\n  ${output[3]}: ${ctx.input[output[3]]}\n\n  is the information above correct?`,
+                    message: `${output[0]}: ${ctx.input[output[0]]}\n  ${output[1]}: "${path.join(process.env.HOME, config.baseDir, ctx.input[output[1]])}"\n  ${output[2]}: ${ctx.input[output[2]]}\n  ${output[3]}: ${ctx.input[output[3]]}\n\n  is the information above correct?`,
                     initial: false
                 }])
             },
@@ -92,7 +93,7 @@ const tasks = new Listr(
         },
         {
             task: async (ctx, task) => {
-                task.title = `save video to "${ctx.input[output[1]]}" folder`
+                task.title = `save video to "${path.join(process.env.HOME, config.baseDir, ctx.input[output[1]])}" folder`
                 await download(ctx.linkVideos, ctx.input[output[1]])
                 task.output = `total videos: ${ctx.linkVideos.length}`
             },
@@ -231,7 +232,7 @@ const getSingleVid = ({ v_id, href, defaultResolution, resolution }) => {
 }
 
 const download = (videos, dirName) => {
-    dirName = path.join(`${process.env.HOME}/My tutorial playlist`, dirName)
+    dirName = path.join(process.env.HOME, config.baseDir, dirName)
     return videos.map(async video => {
         try {
             const fileName = path.join(dirName, video.fileName.replace(/\//g, " of "))
