@@ -16,3 +16,12 @@ just type
 ```bash
 ytdl
 ```
+
+## Custom directory
+just type
+
+```bash
+ytdl --setDir your_directory
+```
+
+Default directory is your_home/downloads

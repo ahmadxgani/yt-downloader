@@ -25,7 +25,6 @@
     "cheerio": "^1.0.0-rc.9",
     "listr2": "^3.10.0"
   },
-  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/QUERY-GANI/yt-downloader.git"
