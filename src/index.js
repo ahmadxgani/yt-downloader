@@ -94,8 +94,8 @@ const tasks = new Listr(
         {
             task: async (ctx, task) => {
                 task.title = `save video to "${path.join(process.env.HOME, config.baseDir, ctx.input[output[1]])}" folder`
-                await download(ctx.linkVideos, ctx.input[output[1]])
                 task.output = `total videos: ${ctx.linkVideos.length}`
+                ctx.log = await download(ctx.linkVideos, ctx.input[output[1]])
             },
             options: {
                 persistentOutput: true
@@ -107,7 +107,9 @@ const tasks = new Listr(
 
 exports.start = async () => {
     try {
-        await tasks.run()
+        const ctx = await tasks.run()
+        Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(ctx.log))
+        if (ctx.log.length) console.log(`Done with ${ctx.log.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`);
     } catch (e) {
         console.error(e)
     }
@@ -116,12 +118,16 @@ exports.retry = async () => {
     try {
         const isNeedToRetry = Fs.existsSync(path.join(process.env.HOME, "ytdl.json"))
         if (!isNeedToRetry) throw new Error("No videos fail to download again")
-        const failVideos = require(path.join(process.env.HOME, "ytdl.json"))
+        const log = require(path.join(process.env.HOME, "ytdl.json"))
+        if (!log.length) throw new Error("You not have history download")
+        const failVideos = log.filter(val => val.isFailed)
         if (!failVideos.length) throw new Error("No videos fail to download again")
-        const dirName = path.join(failVideos.fullPath, "..")
-        const arr = failVideos.fullPath.split("/")
-        const fileName = arr[arr.length - 1]
-        await save(dirName, fileName, failVideos.fullPath, failVideos.downloadLink)
+        failVideos.map(async (failVideo) => {
+            const dirName = path.join(failVideo.fullPath, "..")
+            const arr = failVideo.fullPath.split("/")
+            const fileName = arr[arr.length - 1]
+            await save(dirName, fileName, failVideo.fullPath, failVideo.downloadLink)
+        })
     } catch (e) {
         console.log(e.message);
     }
@@ -150,8 +156,7 @@ const ytPlaylistDl = async (link, defaultResolution, resolution) => {
             })
         })
         return await Promise.all(promiseArr)
-    } catch (e) {
-        console.log(e)
+    } catch {
         throw new Error("Request time out")
     }
 }
@@ -233,24 +238,26 @@ const getSingleVid = ({ v_id, defaultResolution, resolution }) => {
 
 const download = (videos, dirName) => {
     dirName = path.join(process.env.HOME, config.baseDir, dirName)
-    const fail_link = []
-    const arr = videos.map(async video => {
+    const log = videos.map(async video => {
         const fileName = video.fileName.replace(/\//g, " of ")
         const output = path.join(dirName, fileName)
         try {
             await save(dirName, fileName, output, video.downloadLink)
+            return {
+                link: video.downloadLink,
+                fullPath: output,
+                isFailed: false
+            }
         } catch {
             console.log(`video with "${fileName}" name failed to save`)
-            console.log(`\n${video.downloadLink}\n`);
-            fail_link.push({
+            return {
                 link: video.downloadLink,
-                fullPath: output
-            })
+                fullPath: output,
+                isFailed: true
+            }
         }
     })
-    Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(fail_link))
-    console.log(`Done with ${fail_link.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`);
-    return arr
+    return Promise.all(log);
 }
 
 const save = async (dirName, fileName, output, downloadLink) => {
