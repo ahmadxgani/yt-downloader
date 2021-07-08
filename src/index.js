@@ -109,7 +109,8 @@ exports.start = async () => {
     try {
         const ctx = await tasks.run()
         Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(ctx.log))
-        if (ctx.log.length) console.log(`Done with ${ctx.log.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`);
+        const failedVideo = ctx.log.filter(val => val.isFailed)
+        if (failedVideo.length) console.log(`Done with ${failedVideo.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`);
     } catch (e) {
         console.error(e)
     }
