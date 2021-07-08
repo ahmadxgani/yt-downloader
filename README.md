@@ -1,4 +1,4 @@
-# Youtube video downloader - cli interface
+# Youtube video downloader - CLI
 
 ## Description
 This Package use for downloading playlist or single video from youtube
