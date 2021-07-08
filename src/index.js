@@ -127,7 +127,7 @@ exports.retry = async () => {
             const dirName = path.join(failVideo.fullPath, "..")
             const arr = failVideo.fullPath.split("/")
             const fileName = arr[arr.length - 1]
-            await save(dirName, fileName, failVideo.fullPath, failVideo.downloadLink)
+            await save(dirName, fileName, failVideo.fullPath, failVideo.link)
         })
     } catch (e) {
         console.log(e.message);
