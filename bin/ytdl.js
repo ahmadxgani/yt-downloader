@@ -5,12 +5,14 @@ const Fs = require("fs")
 
 if (!Fs.existsSync(envFile)) Fs.writeFileSync(envFile, JSON.stringify({ baseDir: "downloads" }))
 
-const config = require(envFile)
+const { start, retry } = require("../src/index")
 
 if (process.argv.length === 4 && process.argv[2] === "--setDir") {
+    const config = require(envFile)
     config.baseDir = process.argv[3]
     Fs.writeFileSync(envFile, JSON.stringify(config))
+} else if (process.argv.length === 3 && process.argv[2] === "--retry") {
+    retry()
 } else {
-    const { start } = require("../src/index")
     start()
 }

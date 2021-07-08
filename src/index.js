@@ -112,6 +112,20 @@ exports.start = async () => {
         console.error(e)
     }
 }
+exports.retry = async () => {
+    try {
+        const isNeedToRetry = Fs.existsSync(path.join(process.env.HOME, "ytdl.json"))
+        if (!isNeedToRetry) throw new Error("No videos fail to download again")
+        const failVideos = require(path.join(process.env.HOME, "ytdl.json"))
+        if (!failVideos.length) throw new Error("No videos fail to download again")
+        const dirName = path.join(failVideos.fullPath, "..")
+        const arr = failVideos.fullPath.split("/")
+        const fileName = arr[arr.length - 1]
+        await save(dirName, fileName, failVideos.fullPath, failVideos.downloadLink)
+    } catch (e) {
+        console.log(e.message);
+    }
+}
 
 const ytPlaylistDl = async (link, defaultResolution, resolution) => {
     try {
@@ -219,35 +233,49 @@ const getSingleVid = ({ v_id, defaultResolution, resolution }) => {
 
 const download = (videos, dirName) => {
     dirName = path.join(process.env.HOME, config.baseDir, dirName)
-    return videos.map(async video => {
+    const fail_link = []
+    const arr = videos.map(async video => {
+        const fileName = video.fileName.replace(/\//g, " of ")
+        const output = path.join(dirName, fileName)
         try {
-            const fileName = path.join(dirName, video.fileName.replace(/\//g, " of "))
-            const response = (await axios({
-                url: video.downloadLink,
-                method: "GET",
-                headers: {
-                    "Host": domain.exec(video.downloadLink)[0],
-                    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.5",
-                    "Connection": "keep-alive",
-                    "Referer": "https://www.y2mate.com/",
-                    "Upgrade-Insecure-Requests": 1
-                },
-                responseType: "stream"
-            })).data
-            
-            if (!Fs.existsSync(path.join(dirName))) {
-                Fs.mkdirSync(path.join(dirName), { recursive: true });
-            }
-    
-            response.pipe(Fs.createWriteStream(fileName))
-            response.on("end", () => {
-                console.log(`video with name "${video.fileName.replace(/\//g, " of ")}" has been saved successfully`)
-            })
+            await save(dirName, fileName, output, video.downloadLink)
         } catch {
-            console.log(`video with "${video.fileName.replace(/\//g, " of ")}" name failed to save`)
+            console.log(`video with "${fileName}" name failed to save`)
+            console.log(`\n${video.downloadLink}\n`);
+            fail_link.push({
+                link: video.downloadLink,
+                fullPath: output
+            })
         }
+    })
+    Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(fail_link))
+    console.log(`Done with ${fail_link.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`);
+    return arr
+}
+
+const save = async (dirName, fileName, output, downloadLink) => {
+    const response = (await axios({
+        url: downloadLink,
+        method: "GET",
+        headers: {
+            "Host": domain.exec(downloadLink)[0],
+            "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Referer": "https://www.y2mate.com/",
+            "Upgrade-Insecure-Requests": 1
+        },
+        responseType: "stream"
+    })).data
+    
+    if (!Fs.existsSync(dirName)) {
+        Fs.mkdirSync(dirName, { recursive: true });
+    }
+
+    response.pipe(Fs.createWriteStream(output))
+    response.on("end", () => {
+        console.log(`video with name "${fileName}" has been saved successfully`)
     })
 }
 
