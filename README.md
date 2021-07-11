@@ -27,9 +27,4 @@ ytdl --setDir your_directory
 Default directory is your_home/downloads
 
 ## Demo
-![image](https://user-images.githubusercontent.com/73988956/124352636-b72fce00-dc2b-11eb-80ac-c2ceabdc8203.png)
-![image](https://user-images.githubusercontent.com/73988956/124352642-bf880900-dc2b-11eb-95e6-934435d17566.png)
-![image](https://user-images.githubusercontent.com/73988956/124352648-d2024280-dc2b-11eb-940c-4ccdbd52058c.png)
-![image](https://user-images.githubusercontent.com/73988956/124352649-d4fd3300-dc2b-11eb-988c-0cbe0c788c89.png)
-![image](https://user-images.githubusercontent.com/73988956/124352653-dcbcd780-dc2b-11eb-9fb0-f0b15db6b07c.png)
-![image](https://user-images.githubusercontent.com/73988956/124352752-89975480-dc2c-11eb-9ad4-f565244ae4c8.png)
+You can visit [this link](https://instagram.fbdo7-1.fna.fbcdn.net/v/t50.2886-16/216859505_951063385678858_2558901082751597075_n.mp4?_nc_ht=instagram.fbdo7-1.fna.fbcdn.net&_nc_cat=110&_nc_ohc=-x_34T-4Q2gAX8_2b67&edm=ADECaisBAAAA&ccb=7-4&oe=60EE169B&oh=0d08faa904ab8e6711c3920c3b88b689&_nc_sid=ca78b6) for demo
