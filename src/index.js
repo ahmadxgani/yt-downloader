@@ -112,7 +112,7 @@ const tasks = new Listr(
   { exitOnError: false }
 )
 
-const start = async () => {
+exports.start = async () => {
   try {
     const ctx = await tasks.run()
     Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(ctx.log))
@@ -306,5 +306,3 @@ const chooseResolution = (defaultResolution, resolution, availableResolution) =>
 
   return isAvailable || defaultRes
 }
-
-start()
