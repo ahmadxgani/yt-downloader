@@ -273,31 +273,35 @@ const download = (videos, dirName) => {
 }
 
 const save = async (dirName, fileName, output, downloadLink) => {
-  const response = (
-    await axios({
-      url: downloadLink,
-      method: "GET",
-      headers: {
-        Host: domain.exec(downloadLink)[0],
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        Connection: "keep-alive",
-        Referer: "https://www.y2mate.com/",
-        "Upgrade-Insecure-Requests": 1,
-      },
-      responseType: "stream",
+  try {
+    const response = (
+      await axios({
+        url: downloadLink,
+        method: "GET",
+        headers: {
+          // Host: domain.exec(downloadLink)[0],
+          "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.5",
+          Connection: "keep-alive",
+          Referer: "https://www.y2mate.com/",
+          "Upgrade-Insecure-Requests": 1,
+        },
+        responseType: "stream",
+      })
+    ).data
+
+    if (!Fs.existsSync(dirName)) {
+      Fs.mkdirSync(dirName, { recursive: true })
+    }
+
+    response.pipe(Fs.createWriteStream(output))
+    response.on("end", () => {
+      console.log(`video with name "${fileName}" has been saved successfully`)
     })
-  ).data
-
-  if (!Fs.existsSync(dirName)) {
-    Fs.mkdirSync(dirName, { recursive: true })
+  } catch (e) {
+    console.log(e.message)
   }
-
-  response.pipe(Fs.createWriteStream(output))
-  response.on("end", () => {
-    console.log(`video with name "${fileName}" has been saved successfully`)
-  })
 }
 
 const chooseResolution = (defaultResolution, resolution, availableResolution) => {
