@@ -118,18 +118,18 @@ exports.start = async () => {
   try {
     await tasks.run()
     // const ctx = await tasks.run()
-    // Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(ctx.log))
+    // Fs.writeFileSync(path.join(process.env.HOME, "failedLink.json"), JSON.stringify(ctx.log))
     // const failedVideo = ctx.log.filter((val) => val.isFailed)
-    // if (failedVideo.length) console.log(`Done with ${failedVideo.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`)
+    // if (failedVideo.length) console.log(`Done with ${failedVideo.length} failed file, you can visit the log on "${path.join(process.env.HOME, "failedLink.json")}" or retry download with command "ytdl --retry"`)
   } catch (e) {
     console.error(e)
   }
 }
 exports.retry = async () => {
   try {
-    const isNeedToRetry = Fs.existsSync(path.join(process.env.HOME, "ytdl.json"))
+    const isNeedToRetry = Fs.existsSync(path.join(process.env.HOME, "failedLink.json"))
     if (!isNeedToRetry) throw new Error("No videos fail to download again")
-    const log = require(path.join(process.env.HOME, "ytdl.json"))
+    const log = require(path.join(process.env.HOME, "failedLink.json"))
     if (!log.length) throw new Error("You not have history download")
     const failVideos = log.filter((val) => val.isFailed)
     if (!failVideos.length) throw new Error("No videos fail to download again")
