@@ -92,7 +92,6 @@ const tasks = new Listr(
             ctx.linkVideos = await ytPlaylistDl(ctx.input[output[0]], ctx.input[output[3]], ctx.input[output[2]])
             if (!ctx.linkVideos.length) throw "Playlist url are not supported"
           }
-          task.title = "Downloading video"
         } catch (e) {
           throw e
         }
@@ -252,7 +251,7 @@ const download = (videos, dirName) => {
   dirName = path.join(process.env.HOME, config.baseDir, dirName)
   const log = videos.map(async (video) => {
     const fileName = video.fileName.replace(/\//g, " of ")
-    const output = path.join(dirName, fileName)
+    const output = path.join(dirName, fileName, ".mp4")
     try {
       await save(dirName, fileName, output, video.downloadLink)
       return {
