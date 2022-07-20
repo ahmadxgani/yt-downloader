@@ -1,5 +1,6 @@
 const axios = require("axios").default
 const cheerio = require("cheerio")
+const download = require("download")
 const Fs = require("fs")
 const { Listr } = require("listr2")
 const path = require("path")
@@ -7,7 +8,6 @@ const config = require(path.join(process.env.HOME, "env.json"))
 
 const singleRegex = new RegExp(/(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:shorts\/)?(?:watch\?.*(?:|\&)v=|embed\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/)
 const playlistRegex = new RegExp(/^(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube\.com\/playlist\?list=)([-_0-9A-Za-z]{34})$/)
-const domain = new RegExp(/((redirector|r1---sn-npoeenlk)\.googlevideo\.com)|(dl(\d){0,3}.(dlmate|y2mate)(\d){0,2}.(xyz|com))/)
 
 const informationTask = async (ctx, task) => {
   ctx.type = await task.prompt({
@@ -101,7 +101,8 @@ const tasks = new Listr(
       task: async (ctx, task) => {
         task.title = `save video to "${path.join(process.env.HOME, config.baseDir, ctx.input[output[1]])}" folder`
         task.output = `total videos: ${ctx.linkVideos.length}`
-        ctx.log = await download(ctx.linkVideos, ctx.input[output[1]])
+        await downloads(ctx.linkVideos, ctx.input[output[1]])
+        // ctx.log = await downloads(ctx.linkVideos, ctx.input[output[1]])
       },
       options: {
         persistentOutput: true,
@@ -113,19 +114,20 @@ const tasks = new Listr(
 
 exports.start = async () => {
   try {
-    const ctx = await tasks.run()
-    Fs.writeFileSync(path.join(process.env.HOME, "ytdl.json"), JSON.stringify(ctx.log))
-    const failedVideo = ctx.log.filter((val) => val.isFailed)
-    if (failedVideo.length) console.log(`Done with ${failedVideo.length} failed file, you can visit the log on "${path.join(process.env.HOME, "ytdl.json")}" or retry download with command "ytdl --retry"`)
+    await tasks.run()
+    // const ctx = await tasks.run()
+    // Fs.writeFileSync(path.join(process.env.HOME, "failedLink.json"), JSON.stringify(ctx.log))
+    // const failedVideo = ctx.log.filter((val) => val.isFailed)
+    // if (failedVideo.length) console.log(`Done with ${failedVideo.length} failed file, you can visit the log on "${path.join(process.env.HOME, "failedLink.json")}" or retry download with command "ytdl --retry"`)
   } catch (e) {
     console.error(e)
   }
 }
 exports.retry = async () => {
   try {
-    const isNeedToRetry = Fs.existsSync(path.join(process.env.HOME, "ytdl.json"))
+    const isNeedToRetry = Fs.existsSync(path.join(process.env.HOME, "failedLink.json"))
     if (!isNeedToRetry) throw new Error("No videos fail to download again")
-    const log = require(path.join(process.env.HOME, "ytdl.json"))
+    const log = require(path.join(process.env.HOME, "failedLink.json"))
     if (!log.length) throw new Error("You not have history download")
     const failVideos = log.filter((val) => val.isFailed)
     if (!failVideos.length) throw new Error("No videos fail to download again")
@@ -133,7 +135,9 @@ exports.retry = async () => {
       const dirName = path.join(failVideo.fullPath, "..")
       const arr = failVideo.fullPath.split("/")
       const fileName = arr[arr.length - 1]
-      await save(dirName, fileName, failVideo.fullPath, failVideo.link)
+      // hapus item yg gagal jika file berhasil / sudah selesai di download dan di simpan ( belum terlaksana )
+      await downloads(failVideo.link, failVideo.fullPath)
+      // await save(dirName, fileName, failVideo.fullPath, failVideo.link)
     })
   } catch (e) {
     console.log(e.message)
@@ -247,56 +251,71 @@ const getSingleVid = ({ v_id, defaultResolution, resolution }) => {
   })
 }
 
-const download = (videos, dirName) => {
+const downloads = async (videos, dirName) => {
   dirName = path.join(process.env.HOME, config.baseDir, dirName)
-  const log = videos.map(async (video) => {
-    const fileName = video.fileName.replace(/\//g, " of ")
-    const output = path.join(dirName, fileName, ".mp4")
-    try {
-      await save(dirName, fileName, output, video.downloadLink)
-      return {
-        link: video.downloadLink,
-        fullPath: output,
-        isFailed: false,
+  await Promise.all(
+    videos.map((video) => {
+      const fileName = video.fileName.replace(/\//g, " of ")
+      const output = path.join(dirName, fileName)
+      if (video.downloadLink) {
+        download(video.downloadLink, output)
       }
-    } catch {
-      console.log(`video with "${fileName}" name failed to save`)
-      return {
-        link: video.downloadLink,
-        fullPath: output,
-        isFailed: true,
-      }
-    }
-  })
-  return Promise.all(log)
+    })
+  )
+  console.log("video downloaded")
+
+  // const log = videos.map(async (video) => {
+  //   const fileName = video.fileName.replace(/\//g, " of ")
+  //   const output = path.join(dirName, fileName)
+  //   try {
+
+  //     await save(dirName, fileName, output, video.downloadLink)
+  //     return {
+  //       link: video.downloadLink,
+  //       fullPath: output,
+  //       isFailed: false,
+  //     }
+  //   } catch {
+  //     console.log(`video with "${fileName}" name failed to save`)
+  //     return {
+  //       link: video.downloadLink,
+  //       fullPath: output,
+  //       isFailed: true,
+  //     }
+  //   }
+  // })
+  // return Promise.all(log)
 }
 
 const save = async (dirName, fileName, output, downloadLink) => {
-  const response = (
-    await axios({
-      url: downloadLink,
-      method: "GET",
-      headers: {
-        Host: domain.exec(downloadLink)[0],
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        Connection: "keep-alive",
-        Referer: "https://www.y2mate.com/",
-        "Upgrade-Insecure-Requests": 1,
-      },
-      responseType: "stream",
+  try {
+    const response = (
+      await axios({
+        url: downloadLink,
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.5",
+          Connection: "keep-alive",
+          Referer: "https://www.y2mate.com/",
+          "Upgrade-Insecure-Requests": 1,
+        },
+        responseType: "stream",
+      })
+    ).data
+
+    if (!Fs.existsSync(dirName)) {
+      Fs.mkdirSync(dirName, { recursive: true })
+    }
+
+    response.pipe(Fs.createWriteStream(output))
+    response.on("end", () => {
+      console.log(`video with name "${fileName}" has been saved successfully`)
     })
-  ).data
-
-  if (!Fs.existsSync(dirName)) {
-    Fs.mkdirSync(dirName, { recursive: true })
+  } catch (e) {
+    console.log(e.message)
   }
-
-  response.pipe(Fs.createWriteStream(output))
-  response.on("end", () => {
-    console.log(`video with name "${fileName}" has been saved successfully`)
-  })
 }
 
 const chooseResolution = (defaultResolution, resolution, availableResolution) => {
